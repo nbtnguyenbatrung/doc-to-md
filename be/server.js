@@ -153,6 +153,69 @@ function addImageToFolder(images){
     });
 }
 
+// Detect and format JSON blocks (multiline support)
+function detectAndFormatJSON(html) {
+    const lines = html.split('</p>');
+    let result = [];
+    let jsonBuffer = [];
+    let inJsonBlock = false;
+
+    for (let i = 0; i < lines.length; i++) {
+        let line = lines[i];
+        if (!line.trim()) continue;
+
+        const textContent = line.replace(/<[^>]+>/g, '').trim();
+
+        if (textContent.startsWith('{') || textContent.startsWith('[')) {
+            inJsonBlock = true;
+            jsonBuffer = [textContent];
+            continue;
+        }
+
+        if (inJsonBlock) {
+            jsonBuffer.push(textContent);
+
+            if (textContent.endsWith('}') || textContent.endsWith(']')) {
+                const jsonText = jsonBuffer.join('\n');
+                try {
+                    const cleaned = jsonText
+                        .replace(/\s+/g, ' ')
+                        .replace(/\s*:\s*/g, ': ')
+                        .replace(/\s*,\s*/g, ', ')
+                        .replace(/\{\s*/g, '{')
+                        .replace(/\s*\}/g, '}')
+                        .replace(/\[\s*/g, '[')
+                        .replace(/\s*\]/g, ']')
+                        .replace(/"\s*:\s*/g, '": ')
+                        .replace(/,\s*"/g, ', "');
+
+                    const parsed = JSON.parse(cleaned);
+                    const formatted = JSON.stringify(parsed, null, 2);
+                    result.push(`<pre><code class="language-json">${formatted}</code></pre>`);
+
+                    jsonBuffer = [];
+                    inJsonBlock = false;
+                    continue;
+                } catch (e) {
+                    jsonBuffer.forEach(buf => result.push(`<p>${buf}</p>`));
+                    jsonBuffer = [];
+                    inJsonBlock = false;
+                    continue;
+                }
+            }
+            continue;
+        }
+
+        result.push(line + '</p>');
+    }
+
+    if (jsonBuffer.length > 0) {
+        jsonBuffer.forEach(buf => result.push(`<p>${buf}</p>`));
+    }
+
+    return result.join('');
+}
+
 // Convert buffer to markdown
 async function convertDocxBufferToMarkdown(buffer) {
 
@@ -251,11 +314,26 @@ async function convertDocxBufferToMarkdown(buffer) {
   }
 
   cleanedHtml = addNumberingToHeadings(cleanedHtml);
+    cleanedHtml = detectAndFormatJSON(cleanedHtml);
 
   // Setup Turndown with GFM plugin to support tables, strikethrough, task lists
   const turndownService = new TurndownService({
-      codeBlockStyle: "fenced"
+      codeBlockStyle: "fenced",
+      fence: '```'
   });
+    // Custom rule for code blocks
+    turndownService.addRule('codeBlock', {
+        filter: function(node) {
+            return node.nodeName === 'PRE' &&
+                node.firstChild &&
+                node.firstChild.nodeName === 'CODE';
+        },
+        replacement: function(content, node) {
+            const className = node.firstChild.className || '';
+            const language = className.replace('language-', '') || '';
+            return '\n\n```' + language + '\n' + content + '\n```\n\n';
+        }
+    });
   turndownService.use([gfm.tables]);
 
   // Convert cleaned HTML -> Markdown
