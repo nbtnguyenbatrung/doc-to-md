@@ -187,7 +187,8 @@ function detectAndFormatJSON(html) {
                         .replace(/\[\s*/g, '[')
                         .replace(/\s*\]/g, ']')
                         .replace(/"\s*:\s*/g, '": ')
-                        .replace(/,\s*"/g, ', "');
+                        .replace(/,\s*"/g, ', "')
+                        .replace(/[“”]/g, '"');
 
                     const parsed = JSON.parse(cleaned);
                     const formatted = JSON.stringify(parsed, null, 2);
