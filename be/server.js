@@ -159,6 +159,8 @@ function detectAndFormatJSON(html) {
     let result = [];
     let jsonBuffer = [];
     let inJsonBlock = false;
+    let braceCount = 0;
+    let bracketCount = 0;
 
     for (let i = 0; i < lines.length; i++) {
         let line = lines[i];
@@ -166,16 +168,50 @@ function detectAndFormatJSON(html) {
 
         const textContent = line.replace(/<[^>]+>/g, '').trim();
 
-        if (textContent.startsWith('{') || textContent.startsWith('[')) {
+        if (!inJsonBlock && textContent.startsWith('{') || textContent.startsWith('[')) {
             inJsonBlock = true;
             jsonBuffer = [textContent];
+            // Đếm số dấu ngoặc trong dòng đầu tiên
+            braceCount = (textContent.match(/\{/g) || []).length - (textContent.match(/\}/g) || []).length;
+            bracketCount = (textContent.match(/\[/g) || []).length - (textContent.match(/\]/g) || []).length;
+
+            // Nếu JSON chỉ có 1 dòng (ví dụ: {"key": "value"})
+            if (braceCount === 0 && bracketCount === 0) {
+                try {
+                    const cleaned = textContent
+                        .replace(/\s+/g, ' ')
+                        .replace(/\s*:\s*/g, ': ')
+                        .replace(/\s*,\s*/g, ', ')
+                        .replace(/[“”]/g, '"');
+
+                    const parsed = JSON.parse(cleaned);
+                    const formatted = JSON.stringify(parsed, null, 2);
+                    result.push(`<pre><code class="language-json">${formatted}</code></pre>`);
+
+                    jsonBuffer = [];
+                    inJsonBlock = false;
+                    braceCount = 0;
+                    bracketCount = 0;
+                } catch (e) {
+                    result.push(line + '</p>');
+                    jsonBuffer = [];
+                    inJsonBlock = false;
+                    braceCount = 0;
+                    bracketCount = 0;
+                }
+            }
             continue;
         }
 
         if (inJsonBlock) {
             jsonBuffer.push(textContent);
 
-            if (textContent.endsWith('}') || textContent.endsWith(']')) {
+            // Cập nhật số lượng dấu ngoặc
+            braceCount += (textContent.match(/\{/g) || []).length - (textContent.match(/\}/g) || []).length;
+            bracketCount += (textContent.match(/\[/g) || []).length - (textContent.match(/\]/g) || []).length;
+
+            // Kiểm tra xem đã đóng hết dấu ngoặc chưa
+            if (braceCount === 0 && bracketCount === 0) {
                 const jsonText = jsonBuffer.join('\n');
                 try {
                     const cleaned = jsonText
