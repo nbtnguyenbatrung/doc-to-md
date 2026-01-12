@@ -5,7 +5,7 @@
   "scripts": {
     "start": "cross-env node server.js",
     "dev": "cross-env nodemon server.js",
-    "debug": "cross-env node --inspect server.js"
+    "debug": "node --inspect server.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

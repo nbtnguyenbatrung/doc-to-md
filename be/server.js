@@ -268,12 +268,15 @@ async function convertDocxBufferToMarkdown(buffer) {
     {
       includeDefaultStyleMap: true,
       styleMap: [
-          "p[style-name='Heading 1'] => h1.heading-1:fresh",
-          "p[style-name='Heading 2'] => h2.heading-2:fresh",
-          "p[style-name='Heading 3'] => h3.heading-3:fresh",
-          "p[style-name='Heading 4'] => h4.heading-4:fresh",
-          "p[style-name='Heading 5'] => h5.heading-5:fresh",
-          "p[style-name='Heading 6'] => h6.heading-6:fresh",
+
+          "p[style-name='Style Heading 1 + Bottom: (Single solid line Gray-50%  1.5 pt Lin...'] => h1:fresh", // đặc thù nếu tự tạo h1 theo kiểu riêng tự thay đổi phần này
+
+          "p[style-name='Heading 1'] => h1:fresh",
+          "p[style-name='Heading 2'] => h2:fresh",
+          "p[style-name='Heading 3'] => h3:fresh",
+          "p[style-name='Heading 4'] => h4:fresh",
+          "p[style-name='Heading 5'] => h5:fresh",
+          "p[style-name='Heading 6'] => h6:fresh",
           "p[style-name='List Paragraph'] => p:fresh",
 
           // Map theo tên style của bạn
