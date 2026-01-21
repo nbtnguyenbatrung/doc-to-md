@@ -311,7 +311,7 @@ async function convertDocxBufferToMarkdown(buffer) {
 
                 // Trả về HTML img tag với src tạm
                 return {
-                    src: `../images/${imageName}`
+                    src: `./images/${imageName}`
                 };
             });
         })
