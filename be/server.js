@@ -28,15 +28,14 @@ const upload = multer({
   storage,
   limits: { fileSize: 20 * 1024 * 1024 }, // 20MB limit
   fileFilter: (req, file, cb) => {
-    /*if (
+    if (
       file.mimetype ===
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     ) {
       cb(null, true);
     } else {
       cb(new Error("Only .docx files are allowed"));
-    }*/
-      cb(null, true);
+    }
   },
 });
 
@@ -402,30 +401,7 @@ app.post("/api/convert", upload.single("file"), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
-    const file = req.file
-    const ext = path.extname(file.originalname).toLowerCase();
-
-    let finalBuffer = file.buffer;
-
-    if (ext === '.doc') {
-        // convert .doc -> .docx bằng LibreOffice
-        const tmpDir = os.tmpdir();
-        const tmpDocPath = path.join(tmpDir, `${Date.now()}.doc`);
-        const tmpDocxPath = tmpDocPath.replace('.doc', '.docx')
-
-        try {
-            fs.writeFileSync(tmpDocPath, file.buffer); // multer memoryStorage → file.buffer
-            execSync(`libreoffice --headless --convert-to docx "${tmpDocPath}" --outdir "${tmpDir}"`, {
-                timeout: 30000
-            });
-            finalBuffer = fs.readFileSync(tmpDocxPath);
-        } finally {
-            if (fs.existsSync(tmpDocPath)) fs.unlinkSync(tmpDocPath);
-            if (fs.existsSync(tmpDocxPath)) fs.unlinkSync(tmpDocxPath);
-        }
-    }
-
-    const md = await convertDocxBufferToMarkdown(finalBuffer);
+    const md = await convertDocxBufferToMarkdown(req.file.buffer);
 
     // Return markdown as JSON and also a downloadable file name suggestion
     res.json({
