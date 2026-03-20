@@ -8,12 +8,14 @@
     "debug": "node --inspect server.js"
   },
   "dependencies": {
+    "cheerio": "^1.2.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "mammoth": "^1.11.0",
     "multer": "^2.0.2",
     "sanitize-html": "^2.17.0",
+    "sharp": "^0.34.5",
     "turndown": "^7.2.1",
     "turndown-plugin-gfm": "^1.0.2"
   }

@@ -9,8 +9,7 @@ const cors = require("cors");
 const fs = require("fs");
 const path = require("path");
 const sanitizeHtml = require("sanitize-html");
-const os = require("node:os");
-const {execSync} = require("child_process");
+const cheerio = require("cheerio");
 // Use jsdom when available to safely manipulate HTML DOM before turndown
 let jsdom;
 try {
@@ -41,42 +40,28 @@ const upload = multer({
 
 // Sanitizer options (backend): allow common content and table tags, but strip scripts and event handlers
 const SANITIZE_OPTIONS = {
-  allowedTags: [
-    "a",
-    "b",
-    "i",
-    "strong",
-    "em",
-    "p",
-    "div",
-    "span",
-    "br",
-    "ul",
-    "ol",
-    "li",
-    "h1",
-    "h2",
-    "h3",
-    "h4",
-    "h5",
-    "h6",
-    "code",
-    "pre",
-    "table",
-    "thead",
-    "tbody",
-    "tr",
-    "th",
-    "td",
-    "img",
-  ],
-  allowedAttributes: {
-    a: ["href", "name", "target", "rel"],
-    img: ["src", "alt", "title", "width", "height"],
-    "*": ["class", "id", "align"],
-  },
-  // Allow data URIs for images only if you trust your conversion; otherwise remove 'data'
-  allowedSchemes: ["http", "https", "mailto", "data"],
+    allowedTags: [
+        "a","b","i","strong","em","p","div","span","br",
+        "ul","ol","li",
+        "h1","h2","h3","h4","h5","h6",
+        "code","pre",
+        "table","thead","tbody","tr","th","td",
+        "img",
+    ],
+    allowedAttributes: {
+        a: ["href", "name", "target", "rel"],
+        img: ["src", "alt", "title", "width", "height"],
+
+        // 🔥 QUAN TRỌNG
+        td: ["colspan", "rowspan", "align"],
+        th: ["colspan", "rowspan", "align"],
+
+        table: ["class"],
+        tr: ["class"],
+
+        "*": ["class", "id"],
+    },
+    allowedSchemes: ["http", "https", "mailto", "data"],
 };
 
 function convertOutlineToHeadings(markdown) {
@@ -256,6 +241,24 @@ function detectAndFormatJSON(html) {
     return result.join('');
 }
 
+function removeStrongInsideHeading(html) {
+    const $ = cheerio.load(html);
+
+    $("h1, h2, h3, h4, h5, h6").each((_, el) => {
+        const heading = $(el);
+
+        // tìm strong bên trong heading
+        heading.find("strong").each((_, strong) => {
+            const $strong = $(strong);
+
+            // replace <strong>text</strong> => text
+            $strong.replaceWith($strong.html());
+        });
+    });
+
+    return $.html();
+}
+
 // Convert buffer to markdown
 async function convertDocxBufferToMarkdown(buffer) {
 
@@ -377,9 +380,18 @@ async function convertDocxBufferToMarkdown(buffer) {
             return '\n\n```' + language + '\n' + content + '\n```\n\n';
         }
     });
-  turndownService.use([gfm.tables]);
+  // turndownService.use([gfm.tables]); -> dễ làm mất rowspan với colspan
 
-  // Convert cleaned HTML -> Markdown
+    // ❗ Giữ nguyên toàn bộ table
+
+    turndownService.addRule("keepTables", {
+        filter: ["table", "thead", "tbody", "tr", "th", "td"],
+        replacement: function (content, node) {
+            return node.outerHTML;
+        }
+    });
+
+    // Convert cleaned HTML -> Markdown
   let markdown = turndownService.turndown(cleanedHtml);
     // Unescape số thứ tự heading
     markdown = markdown.replace(/^(\d+(?:\.\d+)*)\\\./gm, '$1.');
